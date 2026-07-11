@@ -215,19 +215,19 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="border-b border-border/40 bg-card/90 backdrop-blur-md sticky top-0 z-10">
+      <header className="border-b border-border/30 bg-card/70 backdrop-blur-md sticky top-0 z-10">
         <div className="container py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-sm border border-primary/10">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center shadow-sm border border-primary/10">
               <Sparkles className="w-5 h-5 text-primary" strokeWidth={1.5} />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Form Autofill</h1>
+              <h1 className="text-lg font-semibold tracking-tight text-foreground">Form Autofill</h1>
               <p className="text-[11px] text-muted-foreground tracking-wide">智能預填連結生成器</p>
             </div>
           </div>
           {step !== "input" && (
-            <Button variant="ghost" size="sm" onClick={handleReset} className="gap-1.5">
+            <Button variant="ghost" size="sm" onClick={handleReset} className="gap-1.5 hover:bg-secondary/40">
               <RotateCcw className="w-3.5 h-3.5" />
               重新開始
             </Button>
@@ -247,7 +247,7 @@ export default function Home() {
       </div>
 
       {/* Main content */}
-      <main className="container py-6">
+      <main className="container py-8">
         {step === "input" && (
           <InputStep
             formUrl={formUrl}
@@ -303,7 +303,7 @@ function StepIndicator({ active, done, label, num }: { active: boolean; done: bo
   return (
     <div className={`flex items-center gap-2 transition-all duration-300 ${active ? "text-primary font-semibold" : done ? "text-primary/70" : "text-muted-foreground/50"}`}>
       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold transition-all duration-300 ${
-        active ? "bg-primary text-primary-foreground shadow-sm shadow-primary/30" : done ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+        active ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : done ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
       }`}>
         {done ? <CheckCircle2 className="w-3 h-3" /> : num}
       </div>
@@ -327,9 +327,9 @@ function InputStep({
   return (
     <div className="max-w-3xl mx-auto space-y-5">
       {/* Google Form URL */}
-      <Card className="p-6 shadow-sm hover:shadow-md transition-shadow duration-300 border-border/60">
+      <Card className="glass-card p-6">
         <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-7 h-7 rounded-lg bg-primary/8 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
             <Link2 className="w-3.5 h-3.5 text-primary" strokeWidth={2} />
           </div>
           <h2 className="font-semibold text-[15px]">Google Form 連結</h2>
@@ -338,7 +338,7 @@ function InputStep({
           placeholder="https://docs.google.com/forms/d/e/..."
           value={formUrl}
           onChange={(e) => setFormUrl(e.target.value)}
-          className="font-mono text-sm h-11"
+          className="font-mono text-sm h-11 bg-secondary/30 border-border/40 focus:border-primary/40"
         />
         <p className="text-xs text-muted-foreground mt-2.5 leading-relaxed">
           貼入表單連結，系統將自動識別並映射各欄位
@@ -346,7 +346,7 @@ function InputStep({
       </Card>
 
       {/* Pasted text */}
-      <Card className="p-6 shadow-sm hover:shadow-md transition-shadow duration-300 border-border/60">
+      <Card className="glass-card p-6">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="w-7 h-7 rounded-lg bg-primary/8 flex items-center justify-center">
             <FileText className="w-3.5 h-3.5 text-primary" strokeWidth={2} />
