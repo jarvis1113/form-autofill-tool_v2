@@ -75,6 +75,11 @@ export default function Home() {
         parseTextMutation.mutateAsync({ text: pastedText.trim() }),
       ]);
 
+      if (!textResult || textResult.length === 0) {
+        toast.error("未能從文字中提取到任何資料，請檢查貼上的內容格式");
+        return;
+      }
+
       setFormFields(formResult.fields);
       setBaseUrl(formResult.baseUrl);
       setFormTitle(formResult.formTitle || "");
@@ -103,6 +108,12 @@ export default function Home() {
 
   const handleGenerateLinks = useCallback(async () => {
     if (!formFields || !baseUrl) return;
+
+    // Validate we have students
+    if (students.length === 0) {
+      toast.error("沒有學生資料可生成連結");
+      return;
+    }
 
     // Validate all genders are set
     const missingGender = students.some((s) => !s.gender);
