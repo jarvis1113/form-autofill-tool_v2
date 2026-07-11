@@ -1,5 +1,4 @@
 import { invokeLLM } from "./_core/llm";
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import type { ParsedStudent } from "@shared/types";
 
 /**
@@ -44,12 +43,13 @@ Return ONLY a JSON object: {"students": [{"name": "...", "id": "..."}]}`;
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "meta-llama/llama-3.3-70b-instruct:free",
+      model: "openai/gpt-oss-20b:free",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: text },
       ],
       response_format: { type: "json_object" },
+      max_tokens: 1000,
     }),
   });
 
