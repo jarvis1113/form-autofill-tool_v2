@@ -20,6 +20,7 @@ export interface ParsedFormResult {
   baseUrl: string;
   fields: FormFieldMapping;
   formTitle?: string;
+  fieldOptions?: Record<string, string[]>; // Available options for dropdown/radio fields
 }
 
 // Parsed student data from text

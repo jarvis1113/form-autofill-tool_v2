@@ -46,6 +46,7 @@ export default function Home() {
   const [baseUrl, setBaseUrl] = useState("");
   const [formTitle, setFormTitle] = useState("");
   const [students, setStudents] = useState<ParsedStudent[]>([]);
+  const [fieldOptions, setFieldOptions] = useState<Record<string, string[]>>({});
 
   // Result state
   const [links, setLinks] = useState<StudentLink[]>([]);
@@ -78,6 +79,7 @@ export default function Home() {
       setBaseUrl(formResult.baseUrl);
       setFormTitle(formResult.formTitle || "");
       setStudents(textResult.map((s) => ({ ...s, gender: s.gender || "" })));
+      setFieldOptions(formResult.fieldOptions || {});
       setStep("verify");
 
       // Warn about missing field mappings
@@ -173,6 +175,7 @@ export default function Home() {
     setFormFields(null);
     setBaseUrl("");
     setFormTitle("");
+    setFieldOptions({});
   }, []);
 
   const updateStudentGender = (index: number, gender: string) => {
@@ -247,6 +250,7 @@ export default function Home() {
             setCourseTopic={setCourseTopic}
             onSubmit={handleParseAll}
             isLoading={isLoading}
+            fieldOptions={fieldOptions}
           />
         )}
 
@@ -255,8 +259,11 @@ export default function Home() {
             students={students}
             formTitle={formTitle}
             tutor={tutor}
+            setTutor={setTutor}
             courseId={courseId}
+            setCourseId={setCourseId}
             courseTopic={courseTopic}
+            setCourseTopic={setCourseTopic}
             onUpdateGender={updateStudentGender}
             onUpdateName={updateStudentName}
             onUpdateId={updateStudentId}
@@ -264,6 +271,7 @@ export default function Home() {
             onConfirm={handleGenerateLinks}
             onBack={() => setStep("input")}
             isLoading={generateLinksMutation.isPending}
+            fieldOptions={fieldOptions}
           />
         )}
 
@@ -297,7 +305,7 @@ function StepIndicator({ active, done, label, num }: { active: boolean; done: bo
 function InputStep({
   formUrl, setFormUrl, pastedText, setPastedText,
   tutor, setTutor, courseId, setCourseId, courseTopic, setCourseTopic,
-  onSubmit, isLoading,
+  onSubmit, isLoading, fieldOptions,
 }: {
   formUrl: string; setFormUrl: (v: string) => void;
   pastedText: string; setPastedText: (v: string) => void;
@@ -305,6 +313,7 @@ function InputStep({
   courseId: string; setCourseId: (v: string) => void;
   courseTopic: string; setCourseTopic: (v: string) => void;
   onSubmit: () => void; isLoading: boolean;
+  fieldOptions: Record<string, string[]>;
 }) {
   return (
     <div className="max-w-3xl mx-auto space-y-5">
@@ -406,13 +415,15 @@ function InputStep({
 }
 
 function VerifyStep({
-  students, formTitle, tutor, courseId, courseTopic,
+  students, formTitle, tutor, setTutor, courseId, setCourseId, courseTopic, setCourseTopic,
   onUpdateGender, onUpdateName, onUpdateId, onRemove,
-  onConfirm, onBack, isLoading,
+  onConfirm, onBack, isLoading, fieldOptions,
 }: {
   students: ParsedStudent[];
   formTitle: string;
-  tutor: string; courseId: string; courseTopic: string;
+  tutor: string; setTutor: (v: string) => void;
+  courseId: string; setCourseId: (v: string) => void;
+  courseTopic: string; setCourseTopic: (v: string) => void;
   onUpdateGender: (i: number, g: string) => void;
   onUpdateName: (i: number, n: string) => void;
   onUpdateId: (i: number, id: string) => void;
@@ -420,13 +431,54 @@ function VerifyStep({
   onConfirm: () => void;
   onBack: () => void;
   isLoading: boolean;
+  fieldOptions: Record<string, string[]>;
 }) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Summary */}
-      <Card className="p-5">
-        <h2 className="font-medium mb-3">解析結果摘要</h2>
-        <div className="flex flex-wrap gap-3">
+      <Card className="p-5 shadow-sm border-border/60">
+        <h2 className="font-semibold text-[15px] mb-4">共用欄位設定</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">Tutor</label>
+            {fieldOptions.tutor && fieldOptions.tutor.length > 0 ? (
+              <Select value={tutor} onValueChange={setTutor}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="選擇 Tutor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fieldOptions.tutor.map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input value={tutor} onChange={(e) => setTutor(e.target.value)} placeholder="導師姓名" className="h-10" />
+            )}
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">課程編號</label>
+            <Input value={courseId} onChange={(e) => setCourseId(e.target.value)} placeholder="e.g. B40" className="h-10" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">課程主題</label>
+            {fieldOptions.courseTopic && fieldOptions.courseTopic.length > 0 ? (
+              <Select value={courseTopic} onValueChange={setCourseTopic}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="選擇課程主題" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fieldOptions.courseTopic.map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input value={courseTopic} onChange={(e) => setCourseTopic(e.target.value)} placeholder="課程主題" className="h-10" />
+            )}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-border/40">
           {formTitle && <Badge variant="secondary">{formTitle}</Badge>}
           {tutor && <Badge variant="outline">Tutor: {tutor}</Badge>}
           {courseId && <Badge variant="outline">課程: {courseId}</Badge>}

@@ -12,3 +12,4 @@
 - [x] 驗證 Google Form 欄位映射：確認 entry.ID 存在於抽出的欄位清單
 - [x] 缺少欄位映射時顯示警告提示
 - [x] 修復預填連結空白問題：使用 subFieldId 而非 questionId 作為 entry.ID
+- [x] 修復 TUTOR 和課程主題預填失敗：從表單提取選項列表，在核對步驟提供下拉選單選擇

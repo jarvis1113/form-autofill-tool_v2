@@ -1,5 +1,6 @@
 import { invokeLLM } from "./_core/llm";
 import type { FormFieldMapping, ParsedFormResult } from "@shared/types";
+// invokeLLM kept for potential future use in fallback mapping
 
 /**
  * Fetches a Google Form page and extracts the FB_PUBLIC_LOAD_DATA_ script
@@ -25,7 +26,13 @@ export async function parseGoogleForm(formUrl: string): Promise<ParsedFormResult
   }
 
   const html = await response.text();
+  return parseGoogleFormHtml(html, baseUrl);
+}
 
+/**
+ * Parse form HTML directly (exported for testing).
+ */
+export function parseGoogleFormHtml(html: string, baseUrl: string): Omit<ParsedFormResult, "fields"> & { fields: FormFieldMapping; fieldOptions?: Record<string, string[]> } {
   // Extract FB_PUBLIC_LOAD_DATA_ script content
   const dataMatch = html.match(/FB_PUBLIC_LOAD_DATA_\s*=\s*([\s\S]*?);\s*<\/script>/);
   if (!dataMatch) {
@@ -38,94 +45,104 @@ export async function parseGoogleForm(formUrl: string): Promise<ParsedFormResult
   const titleMatch = html.match(/<title>(.*?)<\/title>/);
   const formTitle = titleMatch ? titleMatch[1].replace(" - Google Forms", "").trim() : undefined;
 
-  // Use LLM to intelligently map fields from the raw data
-  const fields = await extractFieldMappings(rawData, formTitle);
-
-  return {
-    baseUrl,
-    fields,
-    formTitle,
-  };
-}
-
-async function extractFieldMappings(rawData: string, formTitle?: string): Promise<FormFieldMapping> {
-  // Extract fields with their correct sub-field IDs (used for prefill URLs)
+  // Extract fields with sub-field IDs
   const fieldEntries = extractFieldsWithSubIds(rawData);
 
   if (fieldEntries.length === 0) {
     throw new Error("Could not extract any form fields. The form structure may not be supported.");
   }
 
-  // Use LLM to map extracted fields to our expected schema
-  const fieldListStr = fieldEntries
-    .map(f => `entry.${f.subFieldId}: "${f.label}" (type: ${f.type})`)
-    .join("\n");
+  // Deterministic mapping based on field labels (no LLM needed for common patterns)
+  const fields = mapFieldsDeterministic(fieldEntries);
 
-  const result = await invokeLLM({
-    model: "gpt-5-mini",
-    messages: [
-      {
-        role: "system",
-        content: `You are a field mapping assistant. Given a list of Google Form fields (entry IDs and their labels), map them to the following categories:
-- tutor: The field for the tutor/teacher name
-- studentId: The field for student ID/number
-- studentName: The field for student English name
-- courseId: The field for course ID/number
-- courseTopic: The field for course topic/subject
-- gender: The field for student gender (he/she, 他/她)
+  // Extract options for dropdown/radio fields
+  const fieldOptions = extractFieldOptions(rawData, fields);
 
-Only map fields from the FIRST PAGE of the form (the basic info fields). Return ONLY a JSON object with the category as key and the full "entry.XXXXX" as value. You MUST only use entry IDs that appear in the provided field list. If a field cannot be confidently mapped, use an empty string.`,
-      },
-      {
-        role: "user",
-        content: `Form title: ${formTitle || "Unknown"}\n\nFields:\n${fieldListStr}`,
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "field_mapping",
-        strict: true,
-        schema: {
-          type: "object",
-          properties: {
-            tutor: { type: "string", description: "entry.ID for tutor field" },
-            studentId: { type: "string", description: "entry.ID for student ID" },
-            studentName: { type: "string", description: "entry.ID for student name" },
-            courseId: { type: "string", description: "entry.ID for course ID" },
-            courseTopic: { type: "string", description: "entry.ID for course topic" },
-            gender: { type: "string", description: "entry.ID for gender" },
-          },
-          required: ["tutor", "studentId", "studentName", "courseId", "courseTopic", "gender"],
-          additionalProperties: false,
-        },
-      },
-    },
-  });
+  return {
+    baseUrl,
+    fields,
+    formTitle,
+    fieldOptions,
+  };
+}
 
-  const content = result.choices[0]?.message?.content;
-  if (!content || typeof content !== "string") {
-    throw new Error("LLM did not return valid field mapping");
-  }
+/**
+ * Deterministic field mapping based on label matching.
+ * Falls back to LLM only if needed.
+ */
+function mapFieldsDeterministic(fieldEntries: ExtractedFieldWithSubId[]): FormFieldMapping {
+  const mapping: FormFieldMapping = {};
 
-  const mapping = JSON.parse(content) as FormFieldMapping;
+  for (const field of fieldEntries) {
+    const label = field.label.toLowerCase();
 
-  // Validate that returned entry IDs actually exist in the extracted fields
-  const validIds = new Set(fieldEntries.map(f => `entry.${f.subFieldId}`));
-  const validated: FormFieldMapping = {};
-
-  for (const [key, value] of Object.entries(mapping)) {
-    if (value && validIds.has(value)) {
-      (validated as any)[key] = value;
+    if (!mapping.tutor && (label.includes("tutor") || label.includes("導師"))) {
+      mapping.tutor = `entry.${field.subFieldId}`;
+    } else if (!mapping.studentId && (label.includes("學生編號") || label.includes("student id") || label.includes("編號"))) {
+      mapping.studentId = `entry.${field.subFieldId}`;
+    } else if (!mapping.studentName && (label.includes("英文名") || label.includes("student name") || label.includes("english name"))) {
+      mapping.studentName = `entry.${field.subFieldId}`;
+    } else if (!mapping.courseId && (label.includes("課程編號") || label.includes("course id") || label.includes("course code"))) {
+      mapping.courseId = `entry.${field.subFieldId}`;
+    } else if (!mapping.courseTopic && (label.includes("課程主題") || label.includes("course topic") || label.includes("主題"))) {
+      mapping.courseTopic = `entry.${field.subFieldId}`;
+    } else if (!mapping.gender && (label.includes("性別") || label.includes("gender"))) {
+      mapping.gender = `entry.${field.subFieldId}`;
     }
   }
 
-  // Check if we have at least studentName and studentId mapped
-  if (!validated.studentName && !validated.studentId) {
-    throw new Error("無法識別學生姓名或學生編號欄位。請確認表單包含相關欄位。");
+  return mapping;
+}
+
+/**
+ * Extract available options for dropdown and radio fields.
+ * Returns a map of field category -> option values.
+ */
+function extractFieldOptions(rawData: string, fields: FormFieldMapping): Record<string, string[]> {
+  const options: Record<string, string[]> = {};
+
+  // Get all fields with their sub-field IDs and options
+  // Pattern: [[subFieldId,[["option1",null,...],["option2",null,...]],...]]
+  let match;
+
+  // Build a reverse map: subFieldId -> category name
+  const subIdToCategory: Record<string, string> = {};
+  for (const [category, entryId] of Object.entries(fields)) {
+    if (entryId) {
+      const id = entryId.replace("entry.", "");
+      subIdToCategory[id] = category;
+    }
   }
 
-  return validated;
+  // For each field, extract options if it's a dropdown (3) or radio (2)
+  const allFieldsPattern = /\[\[(\d{7,10}),\[((?:\["[^"]*"(?:,(?:null|\d+))*\],?)+)\]/g;
+  while ((match = allFieldsPattern.exec(rawData)) !== null) {
+    const subFieldId = match[1];
+    const optionsBlock = match[2];
+    const category = subIdToCategory[subFieldId];
+
+    if (category) {
+      // Extract option texts from the block
+      const optTexts: string[] = [];
+      const optPattern = /\["([^"]+)"/g;
+      let optMatch;
+      while ((optMatch = optPattern.exec(optionsBlock)) !== null) {
+        // Decode unicode escapes like \u003c -> <
+        const decoded = optMatch[1]
+          .replace(/\\u003c/g, "<")
+          .replace(/\\u003e/g, ">")
+          .replace(/\\u0026gt/g, ">")
+          .replace(/\\u0026lt/g, "<")
+          .replace(/\\u0026amp/g, "&");
+        optTexts.push(decoded);
+      }
+      if (optTexts.length > 0) {
+        options[category] = optTexts;
+      }
+    }
+  }
+
+  return options;
 }
 
 interface ExtractedFieldWithSubId {
