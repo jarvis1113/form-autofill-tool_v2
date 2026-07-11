@@ -57,18 +57,61 @@ export const appRouter = router({
             courseId: z.string().optional(),
             courseTopic: z.string().optional(),
           }),
+          fieldOptions: z.record(z.string(), z.array(z.string())).optional(),
         })
       )
       .mutation(({ input }) => {
-        const { baseUrl, fields, students, commonData } = input;
+        const { baseUrl, fields, students, commonData, fieldOptions = {} } = input;
+
+        // Auto-match tutor and courseTopic to exact option values
+        const matchedCommonData = { ...commonData };
+        if (commonData.tutor && fieldOptions.tutor && Array.isArray(fieldOptions.tutor)) {
+          matchedCommonData.tutor = fuzzyMatchOption(commonData.tutor, fieldOptions.tutor as string[]);
+        }
+        if (commonData.courseTopic && fieldOptions.courseTopic && Array.isArray(fieldOptions.courseTopic)) {
+          matchedCommonData.courseTopic = fuzzyMatchOption(commonData.courseTopic, fieldOptions.courseTopic as string[]);
+        }
+
         return students.map((student) => ({
           name: student.name,
           id: student.id,
           gender: student.gender,
-          link: generatePrefillUrl(baseUrl, fields, student, commonData),
+          link: generatePrefillUrl(baseUrl, fields, student, matchedCommonData),
         }));
       }),
   }),
 });
 
 export type AppRouter = typeof appRouter;
+
+/**
+ * Fuzzy match user input to the closest option in the list.
+ * Matches by: exact match > case-insensitive match > substring match > first keyword match
+ */
+function fuzzyMatchOption(input: string, options: string[]): string {
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+
+  // 1. Exact match
+  const exact = options.find(o => o === trimmed);
+  if (exact) return exact;
+
+  // 2. Case-insensitive match
+  const lower = trimmed.toLowerCase();
+  const caseMatch = options.find(o => o.toLowerCase() === lower);
+  if (caseMatch) return caseMatch;
+
+  // 3. Input is substring of an option (e.g. "KIBBY" matches "MISS KIBBY")
+  const substringMatch = options.find(o => o.toLowerCase().includes(lower));
+  if (substringMatch) return substringMatch;
+
+  // 4. Option contains any word from input
+  const words = lower.split(/\s+/).filter(w => w.length > 1);
+  for (const word of words) {
+    const wordMatch = options.find(o => o.toLowerCase().includes(word));
+    if (wordMatch) return wordMatch;
+  }
+
+  // 5. No match found - return original input (will likely not prefill correctly)
+  return trimmed;
+}

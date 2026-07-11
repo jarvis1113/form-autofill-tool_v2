@@ -125,6 +125,7 @@ export default function Home() {
           courseId: courseId || undefined,
           courseTopic: courseTopic || undefined,
         },
+        fieldOptions: fieldOptions,
       });
 
       setLinks(result);
@@ -250,7 +251,6 @@ export default function Home() {
             setCourseTopic={setCourseTopic}
             onSubmit={handleParseAll}
             isLoading={isLoading}
-            fieldOptions={fieldOptions}
           />
         )}
 
@@ -271,7 +271,6 @@ export default function Home() {
             onConfirm={handleGenerateLinks}
             onBack={() => setStep("input")}
             isLoading={generateLinksMutation.isPending}
-            fieldOptions={fieldOptions}
           />
         )}
 
@@ -305,7 +304,7 @@ function StepIndicator({ active, done, label, num }: { active: boolean; done: bo
 function InputStep({
   formUrl, setFormUrl, pastedText, setPastedText,
   tutor, setTutor, courseId, setCourseId, courseTopic, setCourseTopic,
-  onSubmit, isLoading, fieldOptions,
+  onSubmit, isLoading,
 }: {
   formUrl: string; setFormUrl: (v: string) => void;
   pastedText: string; setPastedText: (v: string) => void;
@@ -313,7 +312,6 @@ function InputStep({
   courseId: string; setCourseId: (v: string) => void;
   courseTopic: string; setCourseTopic: (v: string) => void;
   onSubmit: () => void; isLoading: boolean;
-  fieldOptions: Record<string, string[]>;
 }) {
   return (
     <div className="max-w-3xl mx-auto space-y-5">
@@ -417,7 +415,7 @@ function InputStep({
 function VerifyStep({
   students, formTitle, tutor, setTutor, courseId, setCourseId, courseTopic, setCourseTopic,
   onUpdateGender, onUpdateName, onUpdateId, onRemove,
-  onConfirm, onBack, isLoading, fieldOptions,
+  onConfirm, onBack, isLoading,
 }: {
   students: ParsedStudent[];
   formTitle: string;
@@ -431,7 +429,6 @@ function VerifyStep({
   onConfirm: () => void;
   onBack: () => void;
   isLoading: boolean;
-  fieldOptions: Record<string, string[]>;
 }) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -441,20 +438,7 @@ function VerifyStep({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">Tutor</label>
-            {fieldOptions.tutor && fieldOptions.tutor.length > 0 ? (
-              <Select value={tutor} onValueChange={setTutor}>
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="選擇 Tutor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {fieldOptions.tutor.map((opt) => (
-                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Input value={tutor} onChange={(e) => setTutor(e.target.value)} placeholder="導師姓名" className="h-10" />
-            )}
+            <Input value={tutor} onChange={(e) => setTutor(e.target.value)} placeholder="e.g. KIBBY" className="h-10" />
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">課程編號</label>
@@ -462,22 +446,10 @@ function VerifyStep({
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-2 block">課程主題</label>
-            {fieldOptions.courseTopic && fieldOptions.courseTopic.length > 0 ? (
-              <Select value={courseTopic} onValueChange={setCourseTopic}>
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="選擇課程主題" />
-                </SelectTrigger>
-                <SelectContent>
-                  {fieldOptions.courseTopic.map((opt) => (
-                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Input value={courseTopic} onChange={(e) => setCourseTopic(e.target.value)} placeholder="課程主題" className="h-10" />
-            )}
+            <Input value={courseTopic} onChange={(e) => setCourseTopic(e.target.value)} placeholder="e.g. 小檸檬" className="h-10" />
           </div>
         </div>
+        <p className="text-xs text-muted-foreground">輸入關鍵字即可，系統會自動匹配表單中的選項</p>
         <div className="flex flex-wrap gap-2 pt-2 border-t border-border/40">
           {formTitle && <Badge variant="secondary">{formTitle}</Badge>}
           {tutor && <Badge variant="outline">Tutor: {tutor}</Badge>}
