@@ -49,8 +49,8 @@ export async function parseGoogleForm(formUrl: string): Promise<ParsedFormResult
 }
 
 async function extractFieldMappings(rawData: string, formTitle?: string): Promise<FormFieldMapping> {
-  // First, try regex extraction for entry IDs and their labels
-  const fieldEntries = extractFieldsFromData(rawData);
+  // Extract fields with their correct sub-field IDs (used for prefill URLs)
+  const fieldEntries = extractFieldsWithSubIds(rawData);
 
   if (fieldEntries.length === 0) {
     throw new Error("Could not extract any form fields. The form structure may not be supported.");
@@ -58,7 +58,7 @@ async function extractFieldMappings(rawData: string, formTitle?: string): Promis
 
   // Use LLM to map extracted fields to our expected schema
   const fieldListStr = fieldEntries
-    .map(f => `entry.${f.id}: "${f.label}"`)
+    .map(f => `entry.${f.subFieldId}: "${f.label}" (type: ${f.type})`)
     .join("\n");
 
   const result = await invokeLLM({
@@ -74,7 +74,7 @@ async function extractFieldMappings(rawData: string, formTitle?: string): Promis
 - courseTopic: The field for course topic/subject
 - gender: The field for student gender (he/she, 他/她)
 
-Return ONLY a JSON object with the category as key and the full "entry.XXXXX" as value. You MUST only use entry IDs that appear in the provided field list. If a field cannot be confidently mapped, use an empty string.`,
+Only map fields from the FIRST PAGE of the form (the basic info fields). Return ONLY a JSON object with the category as key and the full "entry.XXXXX" as value. You MUST only use entry IDs that appear in the provided field list. If a field cannot be confidently mapped, use an empty string.`,
       },
       {
         role: "user",
@@ -111,7 +111,7 @@ Return ONLY a JSON object with the category as key and the full "entry.XXXXX" as
   const mapping = JSON.parse(content) as FormFieldMapping;
 
   // Validate that returned entry IDs actually exist in the extracted fields
-  const validIds = new Set(fieldEntries.map(f => `entry.${f.id}`));
+  const validIds = new Set(fieldEntries.map(f => `entry.${f.subFieldId}`));
   const validated: FormFieldMapping = {};
 
   for (const [key, value] of Object.entries(mapping)) {
@@ -128,46 +128,41 @@ Return ONLY a JSON object with the category as key and the full "entry.XXXXX" as
   return validated;
 }
 
-interface ExtractedField {
-  id: string;
+interface ExtractedFieldWithSubId {
+  questionId: string;
+  subFieldId: string;
   label: string;
+  type: string;
 }
 
-function extractFieldsFromData(rawData: string): ExtractedField[] {
-  const fields: ExtractedField[] = [];
+/**
+ * Extracts form fields with their correct sub-field IDs.
+ * 
+ * Google Forms structure in FB_PUBLIC_LOAD_DATA_:
+ * [questionId, "label", description, type, [[subFieldId, ...]]]
+ * 
+ * The PREFILL URL uses subFieldId (not questionId).
+ * - type 0 = text input
+ * - type 2 = radio/checkbox
+ * - type 3 = dropdown
+ */
+function extractFieldsWithSubIds(rawData: string): ExtractedFieldWithSubId[] {
+  const fields: ExtractedFieldWithSubId[] = [];
 
-  // Pattern: entry IDs are typically numbers, paired with labels in the data structure
-  // Google Forms data structure: [entryId, label, ...]
-  const entryPattern = /\[(\d{7,10}),\s*"([^"]*?)"/g;
+  // Pattern matches: [questionId,"label",description_or_null,type,[[subFieldId
+  // The description can be a quoted string or null
+  const pattern = /\[(\d{9,10}),"([^"]*)",(?:"[^"]*"|null),(\d),\[\[(\d{7,10})/g;
   let match;
 
-  while ((match = entryPattern.exec(rawData)) !== null) {
+  while ((match = pattern.exec(rawData)) !== null) {
+    const [, questionId, label, type, subFieldId] = match;
+    const typeNames: Record<string, string> = { "0": "text", "2": "radio", "3": "dropdown" };
     fields.push({
-      id: match[1],
-      label: match[2],
+      questionId,
+      subFieldId,
+      label: label.split("\\n")[0].trim(), // Only take first line of label
+      type: typeNames[type] || `type${type}`,
     });
-  }
-
-  // Alternative pattern if above doesn't match
-  if (fields.length === 0) {
-    const altPattern = /entry\.(\d+).*?"([^"]{2,})"/g;
-    while ((match = altPattern.exec(rawData)) !== null) {
-      fields.push({
-        id: match[1],
-        label: match[2],
-      });
-    }
-  }
-
-  // Another common pattern in FB_PUBLIC_LOAD_DATA_
-  if (fields.length === 0) {
-    const dataPattern = /\[(\d{7,10})\s*,\s*\[\s*\[\s*\d+\s*,\s*"([^"]+)"/g;
-    while ((match = dataPattern.exec(rawData)) !== null) {
-      fields.push({
-        id: match[1],
-        label: match[2],
-      });
-    }
   }
 
   return fields;
