@@ -235,17 +235,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Progress indicator */}
-      <div className="container pt-8 pb-4">
-        <div className="flex items-center gap-3 text-sm">
-          <StepIndicator active={step === "input"} done={step !== "input"} label="輸入資料" num={1} />
-          <div className="w-8 h-px bg-border" />
-          <StepIndicator active={step === "verify"} done={step === "result"} label="核對確認" num={2} />
-          <div className="w-8 h-px bg-border" />
-          <StepIndicator active={step === "result"} done={false} label="生成連結" num={3} />
-        </div>
-      </div>
-
       {/* Main content */}
       <main className="container py-8">
         {step === "input" && (
