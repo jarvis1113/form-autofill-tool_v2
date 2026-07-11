@@ -216,14 +216,13 @@ export default function Home() {
     <div className="min-h-screen">
       {/* Header */}
       <header className="border-b border-border/30 bg-card/70 backdrop-blur-md sticky top-0 z-10">
-        <div className="container py-5 flex items-center justify-between">
+        <div className="container py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center shadow-sm border border-primary/10">
-              <Sparkles className="w-5 h-5 text-primary" strokeWidth={1.5} />
+              <Sparkles className="w-6 h-6 text-primary" strokeWidth={1.5} />
             </div>
             <div>
-              <h1 className="text-lg font-semibold tracking-tight text-foreground">Form Autofill</h1>
-              <p className="text-[11px] text-muted-foreground tracking-wide">智能預填連結生成器</p>
+              <h1 className="text-lg font-semibold tracking-tight text-foreground" style={{color: '#2d62b9', fontSize: '33px', fontWeight: '100'}}>Google form Autofill</h1>
             </div>
           </div>
           {step !== "input" && (
@@ -321,7 +320,7 @@ function InputStep({
           <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
             <Link2 className="w-3.5 h-3.5 text-primary" strokeWidth={2} />
           </div>
-          <h2 className="font-semibold text-[15px]">Google Form 連結</h2>
+          <h2 className="font-semibold text-[15px]" style={{color: '#1b5198', fontSize: '23px', fontWeight: '100'}}>貼上Google Form 連結</h2>
         </div>
         <Input
           placeholder="https://docs.google.com/forms/d/e/..."
@@ -329,9 +328,6 @@ function InputStep({
           onChange={(e) => setFormUrl(e.target.value)}
           className="font-mono text-sm h-11 bg-secondary/30 border-border/40 focus:border-primary/40"
         />
-        <p className="text-xs text-muted-foreground mt-2.5 leading-relaxed">
-          貼入表單連結，系統將自動識別並映射各欄位
-        </p>
       </Card>
 
       {/* Pasted text */}
@@ -340,7 +336,7 @@ function InputStep({
           <div className="w-7 h-7 rounded-lg bg-primary/8 flex items-center justify-center">
             <FileText className="w-3.5 h-3.5 text-primary" strokeWidth={2} />
           </div>
-          <h2 className="font-semibold text-[15px]">貼上資料</h2>
+          <h2 className="font-semibold text-[15px]" style={{color: '#2d62b9', fontSize: '22px', fontWeight: '100'}}>貼上資料</h2>
         </div>
         <Textarea
           placeholder={"TOM陳大文\n(20000234)\n\nJOHN 馮大文*\n(20211133)\n\n..."}
@@ -348,22 +344,22 @@ function InputStep({
           onChange={(e) => setPastedText(e.target.value)}
           className="min-h-[180px] font-mono text-sm leading-relaxed resize-y"
         />
-        <p className="text-xs text-muted-foreground mt-2.5 leading-relaxed">
-          直接貼上文字，AI 將自動提取英文名字與編號
+        <p className="text-xs text-muted-foreground mt-2.5 leading-relaxed" style={{fontSize: '17px'}}>
+          直接貼上所有文字，AI 自動提取英文名字與編號
         </p>
       </Card>
 
       {/* Common fields */}
-      <Card className="p-6 shadow-sm hover:shadow-md transition-shadow duration-300 border-border/60">
+      <Card className="glass-card p-6">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="w-7 h-7 rounded-lg bg-primary/8 flex items-center justify-center">
             <Users className="w-3.5 h-3.5 text-primary" strokeWidth={2} />
           </div>
-          <h2 className="font-semibold text-[15px]">共用欄位</h2>
+          <h2 className="font-semibold text-[15px]" style={{color: '#4271c0', fontSize: '21px', fontWeight: '100'}}>共用欄位</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Tutor</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block" style={{color: '#547ec2', fontSize: '20px', fontWeight: '100'}}>Tutor</label>
             <Input
               placeholder="導師姓名"
               value={tutor}
@@ -372,7 +368,7 @@ function InputStep({
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">課程編號</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block" style={{color: '#547ecd', fontSize: '20px', fontWeight: '100'}}>課程編號</label>
             <Input
               placeholder="e.g. ENG101"
               value={courseId}
@@ -381,7 +377,7 @@ function InputStep({
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">課程主題</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block" style={{color: '#547ecd', fontSize: '20px', fontWeight: '100'}}>課程主題</label>
             <Input
               placeholder="e.g. Summer English"
               value={courseTopic}
@@ -394,7 +390,7 @@ function InputStep({
 
       {/* Submit */}
       <div className="flex justify-end pt-2">
-        <Button onClick={onSubmit} disabled={isLoading} size="lg" className="gap-2 px-10 h-12 text-[15px] font-semibold shadow-sm shadow-primary/20 hover:shadow-md hover:shadow-primary/30 transition-all duration-200 active:scale-[0.97]">
+        <Button onClick={onSubmit} disabled={isLoading} size="lg" className="gap-2 px-10 h-12 text-[15px] font-semibold shadow-sm shadow-primary/20 hover:shadow-md hover:shadow-primary/30 transition-all duration-200 active:scale-[0.97]" style={{backgroundColor: '#5ca8f0'}}>
           {isLoading ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
