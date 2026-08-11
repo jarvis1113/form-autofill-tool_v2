@@ -31,11 +31,12 @@ import type { FormFieldMapping, ParsedStudent, StudentLink } from "@shared/types
 
 type Step = "input" | "verify" | "result";
 
+const DEFAULT_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLScjrjimkS-Q9Sx96L_XbWvTP3HDRcc_RTeKTBC1XGpCjmavRg/viewform";
+
 export default function Home() {
   const [step, setStep] = useState<Step>("input");
 
   // Input state
-  const [formUrl, setFormUrl] = useState("");
   const [pastedText, setPastedText] = useState("");
   const [tutor, setTutor] = useState("");
   const [courseId, setCourseId] = useState("");
@@ -50,6 +51,7 @@ export default function Home() {
 
   // Result state
   const [links, setLinks] = useState<StudentLink[]>([]);
+  const [clickedLinks, setClickedLinks] = useState<Set<number>>(new Set());
 
   // Mutations
   const parseFormMutation = trpc.form.parseForm.useMutation();
@@ -59,10 +61,6 @@ export default function Home() {
   const isLoading = parseFormMutation.isPending || parseTextMutation.isPending;
 
   const handleParseAll = useCallback(async () => {
-    if (!formUrl.trim()) {
-      toast.error("請輸入 Google Form 連結");
-      return;
-    }
     if (!pastedText.trim()) {
       toast.error("請貼上資料文字");
       return;
@@ -71,7 +69,7 @@ export default function Home() {
     try {
       // Parse form and text in parallel
       const [formResult, textResult] = await Promise.all([
-        parseFormMutation.mutateAsync({ url: formUrl.trim() }),
+        parseFormMutation.mutateAsync({ url: DEFAULT_FORM_URL }),
         parseTextMutation.mutateAsync({ text: pastedText.trim() }),
       ]);
 
@@ -104,7 +102,7 @@ export default function Home() {
     } catch (err: any) {
       toast.error(err.message || "解析失敗，請檢查輸入內容");
     }
-  }, [formUrl, pastedText, parseFormMutation, parseTextMutation]);
+  }, [pastedText, parseFormMutation, parseTextMutation]);
 
   const handleGenerateLinks = useCallback(async () => {
     if (!formFields || !baseUrl) return;
@@ -188,6 +186,11 @@ export default function Home() {
     setBaseUrl("");
     setFormTitle("");
     setFieldOptions({});
+    setClickedLinks(new Set());
+  }, []);
+
+  const markAsClicked = useCallback((index: number) => {
+    setClickedLinks((prev) => new Set(prev).add(index));
   }, []);
 
   const updateStudentGender = (index: number, gender: string) => {
@@ -238,8 +241,6 @@ export default function Home() {
       <main className="container py-8">
         {step === "input" && (
           <InputStep
-            formUrl={formUrl}
-            setFormUrl={setFormUrl}
             pastedText={pastedText}
             setPastedText={setPastedText}
             tutor={tutor}
@@ -276,6 +277,8 @@ export default function Home() {
         {step === "result" && (
           <ResultStep
             links={links}
+            clickedLinks={clickedLinks}
+            onMarkClicked={markAsClicked}
             onCopyAll={handleCopyAll}
             onDownloadCsv={handleDownloadCsv}
           />
@@ -301,11 +304,10 @@ function StepIndicator({ active, done, label, num }: { active: boolean; done: bo
 }
 
 function InputStep({
-  formUrl, setFormUrl, pastedText, setPastedText,
+  pastedText, setPastedText,
   tutor, setTutor, courseId, setCourseId, courseTopic, setCourseTopic,
   onSubmit, isLoading,
 }: {
-  formUrl: string; setFormUrl: (v: string) => void;
   pastedText: string; setPastedText: (v: string) => void;
   tutor: string; setTutor: (v: string) => void;
   courseId: string; setCourseId: (v: string) => void;
@@ -314,20 +316,9 @@ function InputStep({
 }) {
   return (
     <div className="max-w-3xl mx-auto space-y-5">
-      {/* Google Form URL */}
-      <Card className="glass-card p-6">
-        <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Link2 className="w-3.5 h-3.5 text-primary" strokeWidth={2} />
-          </div>
-          <h2 className="font-semibold text-[15px]" style={{color: '#1b5198', fontSize: '23px', fontWeight: '100'}}>貼上Google Form 連結</h2>
-        </div>
-        <Input
-          placeholder="https://docs.google.com/forms/d/e/..."
-          value={formUrl}
-          onChange={(e) => setFormUrl(e.target.value)}
-          className="font-mono text-sm h-11 bg-secondary/30 border-border/40 focus:border-primary/40"
-        />
+      {/* Fixed Form Info */}
+      <Card className="glass-card p-4">
+        <p className="text-sm font-medium">使用表單：Summer Feedback</p>
       </Card>
 
       {/* Pasted text */}
@@ -542,9 +533,11 @@ function VerifyStep({
 }
 
 function ResultStep({
-  links, onCopyAll, onDownloadCsv,
+  links, clickedLinks, onMarkClicked, onCopyAll, onDownloadCsv,
 }: {
   links: StudentLink[];
+  clickedLinks: Set<number>;
+  onMarkClicked: (index: number) => void;
   onCopyAll: () => void;
   onDownloadCsv: () => void;
 }) {
@@ -606,10 +599,13 @@ function ResultStep({
               <Button
                 size="sm"
                 className="flex-1 gap-1.5 text-xs"
-                onClick={() => window.open(link.link, "_blank")}
+                onClick={() => onMarkClicked(i)}
+                asChild
               >
-                <ExternalLink className="w-3 h-3" />
-                開啟表單
+                <a href={link.link} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-3 h-3" />
+                  開啟表單
+                </a>
               </Button>
               <Button
                 variant="outline"
@@ -620,6 +616,9 @@ function ResultStep({
                 <ClipboardCopy className="w-3 h-3" />
               </Button>
             </div>
+            {clickedLinks.has(i) && (
+              <p className="text-[11px] text-red-500 mt-2">你已打開過</p>
+            )}
           </Card>
         ))}
       </div>
